@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/qedus/osmpbf"
+	"github.com/timonsn/go-osm-innovation-day/paint2d"
+	"github.com/timonsn/go-osm-innovation-day/poimodel"
 	"image"
 	"image/color"
 	"image/png"
@@ -10,8 +12,6 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"github.com/timonsn/go-osm-innovation-day/paint2d"
-	"github.com/timonsn/go-osm-innovation-day/poimodel"
 )
 
 func loadOSM(c *poimodel.PoiCollection) {
@@ -38,9 +38,9 @@ func loadOSM(c *poimodel.PoiCollection) {
 			case *osmpbf.Node:
 				if handleNode(v) {
 					if v.Tags["shop"] == "supermarket" {
-						c.Add(poimodel.Poi{"AH",poimodel.Location{v.Lat, v.Lon}})
+						c.Add(poimodel.Poi{"AH", poimodel.Location{v.Lat, v.Lon}})
 					} else {
-						c.Add(poimodel.Poi{"BAG",poimodel.Location{v.Lat, v.Lon}})
+						c.Add(poimodel.Poi{"BAG", poimodel.Location{v.Lat, v.Lon}})
 					}
 
 				}
@@ -61,10 +61,9 @@ func handleNode(node *osmpbf.Node) bool {
 	return node.Tags["source"] == "BAG"
 }
 
-
 func main() {
 	mp := &poimodel.PoiCollection{}
-	fmt.Println("Every supermarket!");
+	fmt.Println("Every supermarket!")
 	loadOSM(mp)
 	paint2d.Paint2d(mp)
 }
