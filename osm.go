@@ -14,8 +14,13 @@ import (
 	"github.com/timonsn/go-osm-innovation-day/poimodel"
 )
 
-func loadOSM(c *poimodel.PoiCollection) {
-	f, err := os.Open("netherlands-latest.osm.pbf")
+func loadOSM(filename string) poimodel.OSM {
+	o := poimodel.OSM{}
+	o.Nodes = make(map[int64]*osmpbf.Node)
+	o.Ways = make(map[int64]*osmpbf.Way)
+	o.Relations = make(map[int64]*osmpbf.Relation)
+
+	f, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,8 +31,6 @@ func loadOSM(c *poimodel.PoiCollection) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	var nc, wc, rc uint64
 	for {
 		if v, err := d.Decode(); err == io.EOF {
 			break
@@ -36,36 +39,25 @@ func loadOSM(c *poimodel.PoiCollection) {
 		} else {
 			switch v := v.(type) {
 			case *osmpbf.Node:
-				if handleNode(v) {
-					if v.Tags["shop"] == "supermarket" {
-						c.Add(poimodel.Poi{"AH",poimodel.Location{v.Lat, v.Lon}})
-					} else {
-						c.Add(poimodel.Poi{"BAG",poimodel.Location{v.Lat, v.Lon}})
-					}
-
-				}
-				nc++
+				o.Nodes[v.ID] = v
 			case *osmpbf.Way:
-				// Process Way v.
-				wc++
+				o.Ways[v.ID] = v
 			case *osmpbf.Relation:
-				rc++
+				o.Relations[v.ID] = v
 			default:
 				log.Fatalf("unknown type %T\n", v)
 			}
 		}
 	}
+	return o
 }
-
-func handleNode(node *osmpbf.Node) bool {
-	return node.Tags["source"] == "BAG"
-}
-
 
 func main() {
 	mp := &poimodel.PoiCollection{}
-	fmt.Println("Every supermarket!");
-	loadOSM(mp)
+	fmt.Println("Loading");
+	osmDump := loadOSM("netherlands-latest.osm.pbf")
+	fmt.Println("OSM loaded");
+	poimodel.ExtractSupermarket(osmDump)
 	paint2d.Paint2d(mp)
 }
 
