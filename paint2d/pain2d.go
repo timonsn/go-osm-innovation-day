@@ -1,10 +1,10 @@
 package paint2d
 
 import (
-	"image"
 	"github.com/llgcode/draw2d/draw2dimg"
-	"image/color"
 	"github.com/timonsn/go-osm-innovation-day/poimodel"
+	"image"
+	"image/color"
 )
 
 func MapX(MinLon, MaxLon, lon float64, width int) float64 {
@@ -33,7 +33,7 @@ func Paint2d(c *poimodel.PoiCollection) {
 	})
 
 	gc.SetFillColor(color.RGBA{0, 255, 0, 255})
-	gc.SetStrokeColor(color.RGBA{255, 0, 0	, 255})
+	gc.SetStrokeColor(color.RGBA{255, 0, 0, 255})
 	gc.SetLineWidth(5)
 	c.ForEach(func(poi poimodel.Poi) {
 		switch poi.Name {

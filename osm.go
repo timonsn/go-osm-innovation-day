@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/qedus/osmpbf"
+	"github.com/timonsn/go-osm-innovation-day/paint2d"
+	"github.com/timonsn/go-osm-innovation-day/poimodel"
 	"image"
 	"image/color"
 	"image/png"
@@ -10,8 +12,6 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"github.com/timonsn/go-osm-innovation-day/paint2d"
-	"github.com/timonsn/go-osm-innovation-day/poimodel"
 )
 
 func loadOSM(filename string) poimodel.OSM {
