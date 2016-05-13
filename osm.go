@@ -1,11 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
-	"github.com/qedus/osmpbf"
-	"github.com/timonsn/go-osm-innovation-day/paint2d"
-	"github.com/timonsn/go-osm-innovation-day/poimodel"
-    "github.com/boltdb/bolt"
 	"image"
 	"image/color"
 	"image/png"
@@ -13,34 +11,84 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"bytes"
-	"encoding/gob"
+
+	"github.com/boltdb/bolt"
+	"github.com/qedus/osmpbf"
+	"github.com/timonsn/go-osm-innovation-day/paint2d"
+	"github.com/timonsn/go-osm-innovation-day/poimodel"
 )
 
-func store(db *bolt.DB, bucket *bolt.Bucket, id int64 , obj interface{}) error {
-	return db.Batch(func(tx *bolt.Tx) error {
-		var blob bytes.Buffer     
-		enc := gob.NewEncoder(&blob)
-		err := enc.Encode(obj)
-		if err != nil {
-			log.Fatal(err)
-		}
-	    return bucket.Put([]byte(fmt.Sprintf("%d",id)), blob.Bytes())
+type Store struct {
+	db *bolt.DB
+}
+
+func (s *Store) Open(filename string) error {
+	// Open bolt
+	var err error
+	s.db, err = bolt.Open(filename, 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return s.db.Batch(func(tx *bolt.Tx) error {
+		tx.CreateBucket([]byte("Node"))
+		tx.CreateBucket([]byte("Way"))
+		tx.CreateBucket([]byte("Relation"))
+		return nil
+	})
+
+}
+
+func (s *Store) Close() {
+	s.db.Close()
+}
+
+func (s *Store) CreateNode(obj *osmpbf.Node) error {
+	var blob bytes.Buffer
+	enc := gob.NewEncoder(&blob)
+	err := enc.Encode(obj)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("Node"))
+		err = bucket.Put([]byte(fmt.Sprintf("%d", obj.ID)), blob.Bytes())
+		//log.Printf("Stored node %d\n", obj.ID)
+		return err
 	})
 }
 
-
-func loadOSM(db *bolt.DB, filename string) poimodel.OSM {
-   var nodeBucket *bolt.Bucket
-   var wayBucket *bolt.Bucket
-   var relationBucket *bolt.Bucket
-
-	db.Update(func(tx *bolt.Tx) error {
-	    nodeBucket = tx.Bucket([]byte("Node"))
-	    wayBucket = tx.Bucket([]byte("Way"))
-	    relationBucket = tx.Bucket([]byte("Relation"))
-	    return nil
+func (s *Store) CreateWay(obj *osmpbf.Way) error {
+	var blob bytes.Buffer
+	enc := gob.NewEncoder(&blob)
+	err := enc.Encode(obj)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("Way"))
+		err = bucket.Put([]byte(fmt.Sprintf("%d", obj.ID)), blob.Bytes())
+		//log.Printf("Stored way %d\n", obj.ID)
+		return err
 	})
+}
+
+func (s *Store) CreateRelation(obj *osmpbf.Relation) error {
+	var blob bytes.Buffer
+	enc := gob.NewEncoder(&blob)
+	err := enc.Encode(obj)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("Relation"))
+		err = bucket.Put([]byte(fmt.Sprintf("%d", obj.ID)), blob.Bytes())
+		//log.Printf("Stored relation %d\n", obj.ID)
+		return err
+	})
+}
+
+func loadOSM(store *Store, filename string) poimodel.OSM {
 
 	o := poimodel.OSM{}
 	o.Nodes = make(map[int64]*osmpbf.Node)
@@ -58,22 +106,29 @@ func loadOSM(db *bolt.DB, filename string) poimodel.OSM {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for {
+	for i := 0; i < 100000; i++ {
 		if v, err := d.Decode(); err == io.EOF {
 			break
 		} else if err != nil {
 			log.Fatal(err)
 		} else {
+
 			switch v := v.(type) {
 			case *osmpbf.Node:
-				//o.Nodes[v.ID] = v
-				store(db, nodeBucket, v.ID, v)
-			case *osmpbf.Way:
-				//o.Ways[v.ID] = v
-				store(db, wayBucket, v.ID, v)
+				err = store.CreateNode(v)
+				if err != nil {
+					log.Fatal(err)
+				}
+				case *osmpbf.Way:
+				err = store.CreateWay(v)
+				if err != nil {
+					log.Fatal(err)
+				}
 			case *osmpbf.Relation:
-				//o.Relations[v.ID] = v
-				store(db, relationBucket, v.ID, v)
+				err = store.CreateRelation(v)
+				if err != nil {
+					log.Fatal(err)
+				}
 			default:
 				log.Fatalf("unknown type %T\n", v)
 			}
@@ -83,17 +138,17 @@ func loadOSM(db *bolt.DB, filename string) poimodel.OSM {
 }
 
 func main() {
-	// Open bolt
-	db, err := bolt.Open("geo.db", 0600, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
+	var store Store
+	err := store.Open("geo.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer store.Close()
 
 	mp := &poimodel.PoiCollection{}
-	fmt.Println("Loading");
-	osmDump := loadOSM(db, "netherlands-latest.osm.pbf")
-	fmt.Println("OSM loaded");
+	fmt.Println("Loading")
+	osmDump := loadOSM(&store, "netherlands-latest.osm.pbf")
+	fmt.Println("OSM loaded")
 	poimodel.ExtractSupermarket(osmDump)
 	paint2d.Paint2d(mp)
 }
