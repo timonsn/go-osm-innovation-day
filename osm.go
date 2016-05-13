@@ -139,6 +139,38 @@ func (s *Store) SearchRelation(id int64) (*osmpbf.Relation, error) {
 	return &obj, err
 }
 
+type OnNode func(*osmpbf.Node)
+type OnWay func(*osmpbf.Way)
+type OnRealtion func(*osmpbf.Relation)
+
+
+func (s *Store) IterateNodes( onNode OnNode ) {
+	s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("Node"))
+    	c := bucket.Cursor()
+	    for key, value := c.First(); key != nil; key, value = c.Next() {
+	        log.Printf("%+v\n", value)
+        	buf := bytes.NewBuffer(value)
+			dec := gob.NewDecoder(buf)
+			var obj osmpbf.Node
+			err := dec.Decode(&obj)
+			if err == nil {
+				onNode(&obj)
+			}
+	    }
+
+		return nil
+	})
+
+}
+
+func (s *Store) IterateWays( onWay OnWay ) {
+}
+
+func (s *Store) IterateRelations( onRealtion OnRealtion ) {
+}
+
+
 func loadOSM(store *Store, filename string) poimodel.OSM {
 
 	o := poimodel.OSM{}
@@ -157,46 +189,61 @@ func loadOSM(store *Store, filename string) poimodel.OSM {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for {
-		if v, err := d.Decode(); err == io.EOF {
-			break
-		} else if err != nil {
-			log.Fatal(err)
-		} else {
 
-			switch v := v.(type) {
-			case *osmpbf.Node:
-				err = store.CreateNode(v)
-				if err != nil {
-					log.Fatal(err)
+	store.IterateNodes( func(node *osmpbf.Node){
+		log.Printf("Found node:%+v", node)
+	})
+
+	store.IterateWays( func(way *osmpbf.Way){
+		log.Printf("Found way:%+v", way)
+	})
+
+	store.IterateRelations( func(relation *osmpbf.Relation){
+		log.Printf("Found relation:%+v", relation)
+	})
+
+	if false {
+		for {
+			if v, err := d.Decode(); err == io.EOF {
+				break
+			} else if err != nil {
+				log.Fatal(err)
+			} else {
+
+				switch v := v.(type) {
+				case *osmpbf.Node:
+					err = store.CreateNode(v)
+					if err != nil {
+						log.Fatal(err)
+					}
+					// n, err := store.SearchNode(v.ID)
+					// if err == nil  {
+					// 		log.Printf("* Found %+v\n", n)
+					// 	}
+
+				case *osmpbf.Way:
+					err = store.CreateWay(v)
+					if err != nil {
+						log.Fatal(err)
+					}
+					// n, err := store.SearchWay(v.ID)
+					// if err == nil  {
+					// 		log.Printf("* * Found %+v\n", n)
+					// 	}
+
+				case *osmpbf.Relation:
+					err = store.CreateRelation(v)
+					if err != nil {
+						log.Fatal(err)
+					}
+					// n, err := store.SearchRelation(v.ID)
+					// if err == nil  {
+					// 		log.Printf("* * * Found %+v\n", n)
+					// 	}
+
+				default:
+					log.Fatalf("unknown type %T\n", v)
 				}
-				// n, err := store.SearchNode(v.ID)
-				// if err == nil  {
-				// 		log.Printf("* Found %+v\n", n)
-				// 	}
-
-			case *osmpbf.Way:
-				err = store.CreateWay(v)
-				if err != nil {
-					log.Fatal(err)
-				}
-				// n, err := store.SearchWay(v.ID)
-				// if err == nil  {
-				// 		log.Printf("* * Found %+v\n", n)
-				// 	}
-
-			case *osmpbf.Relation:
-				err = store.CreateRelation(v)
-				if err != nil {
-					log.Fatal(err)
-				}
-				// n, err := store.SearchRelation(v.ID)
-				// if err == nil  {
-				// 		log.Printf("* * * Found %+v\n", n)
-				// 	}
-
-			default:
-				log.Fatalf("unknown type %T\n", v)
 			}
 		}
 	}
