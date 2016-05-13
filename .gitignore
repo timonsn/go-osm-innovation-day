@@ -22,3 +22,10 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+# Don't commit the datafiles
+*.pbf
+
+
+
+.idea
