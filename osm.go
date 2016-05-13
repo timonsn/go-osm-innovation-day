@@ -58,6 +58,24 @@ func (s *Store) CreateNode(obj *osmpbf.Node) error {
 	})
 }
 
+func (s *Store) SearchNode(id int64) (*osmpbf.Node, error) {
+	var value []byte
+	s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("Node"))
+		value = bucket.Get([]byte(fmt.Sprintf("%d", id)))
+		//log.Printf("Stored node %d\n", obj.ID)
+		return nil
+	})
+	if value == nil {
+		return nil, fmt.Errorf("Node with %d not found", id)
+	}
+	buf := bytes.NewBuffer(value)
+	dec := gob.NewDecoder(buf)
+	var obj osmpbf.Node
+	err := dec.Decode(&obj)
+	return &obj, err
+}
+
 func (s *Store) CreateWay(obj *osmpbf.Way) error {
 	var blob bytes.Buffer
 	enc := gob.NewEncoder(&blob)
@@ -119,6 +137,11 @@ func loadOSM(store *Store, filename string) poimodel.OSM {
 				if err != nil {
 					log.Fatal(err)
 				}
+				n, err := store.SearchNode(v.ID)
+				if err == nil  {
+	 				log.Printf("Found %+v", n)
+	 			}
+
 				case *osmpbf.Way:
 				err = store.CreateWay(v)
 				if err != nil {
