@@ -1,6 +1,6 @@
 package poimodel
 
-func ExtractSupermarket (o OSM) PoiCollection {
+func ExtractSupermarket(o OSM) PoiCollection {
 	poi := PoiCollection{}
 
 	for _, node := range o.Nodes {
