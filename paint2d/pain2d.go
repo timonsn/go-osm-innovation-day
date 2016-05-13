@@ -4,7 +4,7 @@ import (
 	"image"
 	"github.com/llgcode/draw2d/draw2dimg"
 	"image/color"
-	"../poimodel"
+	"github.com/timonsn/go-osm-innovation-day/poimodel"
 )
 
 func MapX(MinLon, MaxLon, lon float64, width int) float64 {

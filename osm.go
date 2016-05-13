@@ -10,8 +10,8 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"./paint2d"
-	"./poimodel"
+	"github.com/timonsn/go-osm-innovation-day/paint2d"
+	"github.com/timonsn/go-osm-innovation-day/poimodel"
 )
 
 func loadOSM(c *poimodel.PoiCollection) {
